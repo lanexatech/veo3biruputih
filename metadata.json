@@ -1,0 +1,5 @@
+{
+  "name": "Generator Prompt AI Profesional",
+  "description": "Aplikasi web canggih untuk menghasilkan prompt video dan gambar yang sangat detail untuk model Veo 3 dan Imagen, didukung oleh Gemini API untuk ide, peningkatan, dan terjemahan.",
+  "requestFramePermissions": []
+}
