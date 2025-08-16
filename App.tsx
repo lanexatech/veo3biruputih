@@ -1,14 +1,15 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import PromptGenerator from './components/PromptGenerator';
-import TutorialPage from './components/TutorialPage'; // Impor komponen baru
+import TutorialPage from './components/TutorialPage';
 import { VEO_FIELDS, IMAGEN_FIELDS } from './constants';
-import type { GeneratorMode, PromptData } from './types';
+import type { GeneratorMode } from './types';
 import Logo from './components/Logo';
 import LoginPage from './components/LoginPage';
 import SplashScreen from './components/SplashScreen';
 import DescriptionPage from './components/DescriptionPage';
 import Clock from './components/Clock';
+import SecurityManager from './components/SecurityManager';
+import NotificationPopup from './components/NotificationPopup';
 
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -17,6 +18,7 @@ const App: React.FC = () => {
     return sessionStorage.getItem('userName');
   });
   const [showDescription, setShowDescription] = useState(false);
+  const [notification, setNotification] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,10 +27,19 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleSecurityViolation = (title: string, message: string) => {
+    if (!notification) {
+      setNotification({ title, message });
+    }
+  };
+
+  const closeNotification = () => {
+    setNotification(null);
+  };
+
   const handleLogin = (name: string) => {
     sessionStorage.setItem('userName', name);
     setUserName(name);
-    // Tampilkan halaman deskripsi hanya jika belum pernah dilihat di sesi ini
     if (!sessionStorage.getItem('hasSeenDescription')) {
       setShowDescription(true);
     }
@@ -41,7 +52,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem('userName');
-    sessionStorage.removeItem('hasSeenDescription'); // Hapus juga saat logout
+    sessionStorage.removeItem('hasSeenDescription');
     setUserName(null);
   };
 
@@ -56,93 +67,100 @@ const App: React.FC = () => {
       case 'imagen':
         return <PromptGenerator key="imagen" fields={IMAGEN_FIELDS} generatorType="Imagen" />;
       case 'tutorial':
-        return <TutorialPage />; // Tambahkan case untuk tutorial
+        return <TutorialPage />;
       default:
         return null;
     }
   }, [mode]);
 
+  const securityLayer = (
+    <>
+      <SecurityManager onViolation={handleSecurityViolation} />
+      {notification && <NotificationPopup title={notification.title} message={notification.message} onClose={closeNotification} />}
+    </>
+  );
+
   if (showSplash) {
-    return <SplashScreen />;
+    return <>{securityLayer}<SplashScreen /></>;
   }
 
   if (!userName) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <>{securityLayer}<LoginPage onLogin={handleLogin} /></>;
   }
   
   if (showDescription) {
-    return <DescriptionPage userName={userName} onContinue={handleContinueFromDescription} />;
+    return <>{securityLayer}<DescriptionPage userName={userName} onContinue={handleContinueFromDescription} /></>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 font-sans p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex flex-wrap justify-between items-center mb-8 gap-4">
-          {/* Sisi Kiri: Judul */}
-          <div className="flex-1 min-w-0 w-full sm:w-auto">
-            <div className="flex items-center gap-4">
-              <div className="animate-float">
-                <Logo />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-blue-800 tracking-tight truncate">
-                  Generator Prompt AI
-                </h1>
+    <>
+      {securityLayer}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 font-sans p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <header className="flex flex-wrap justify-between items-center mb-8 gap-4">
+            <div className="flex-1 min-w-0 w-full sm:w-auto">
+              <div className="flex items-center gap-4">
+                <div className="animate-float">
+                  <Logo />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-blue-800 tracking-tight truncate">
+                    Generator Prompt AI
+                  </h1>
+                </div>
               </div>
             </div>
-          </div>
+            <div className="flex items-center flex-wrap justify-end gap-4 sm:gap-6 w-full sm:w-auto">
+              <Clock />
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">Selamat datang,</p>
+                  <p className="font-bold text-blue-800 leading-tight">{userName}</p>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="flex-shrink-0 text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors duration-200"
+                  aria-label="Keluar"
+                >
+                  Keluar
+                </button>
+              </div>
+            </div>
+          </header>
 
-          {/* Sisi Kanan: Waktu, Pengguna, Tombol */}
-          <div className="flex items-center flex-wrap justify-end gap-4 sm:gap-6 w-full sm:w-auto">
-            <Clock />
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-xs text-slate-500">Selamat datang,</p>
-                <p className="font-bold text-blue-800 leading-tight">{userName}</p>
+          <div className="flex flex-row items-start">
+              <main className="flex-grow animate__animated animate__fadeIn -mr-px">
+                {mainContent}
+              </main>
+              <div className="flex flex-col z-10">
+                  <button
+                      onClick={() => setMode('veo')}
+                      className={`${baseTabClasses} ${mode === 'veo' ? activeTabClasses : inactiveTabClasses}`}
+                  >
+                      <span className="[writing-mode:vertical-rl] rotate-180">Veo 3 (Video)</span>
+                  </button>
+                  <button
+                      onClick={() => setMode('imagen')}
+                      className={`${baseTabClasses} -mt-px ${mode === 'imagen' ? activeTabClasses : inactiveTabClasses}`}
+                  >
+                      <span className="[writing-mode:vertical-rl] rotate-180">Imagen (Gambar)</span>
+                  </button>
+                  <button
+                      onClick={() => setMode('tutorial')}
+                      className={`${baseTabClasses} -mt-px ${mode === 'tutorial' ? activeTabClasses : inactiveTabClasses}`}
+                  >
+                      <span className="[writing-mode:vertical-rl] rotate-180">Tutorial</span>
+                  </button>
               </div>
-              <button 
-                onClick={handleLogout}
-                className="flex-shrink-0 text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-lg shadow-sm transition-colors duration-200"
-                aria-label="Keluar"
-              >
-                Keluar
-              </button>
-            </div>
           </div>
-        </header>
-
-        <div className="flex flex-row items-start">
-            <main className="flex-grow animate__animated animate__fadeIn -mr-px">
-              {mainContent}
-            </main>
-            <div className="flex flex-col z-10">
-                <button
-                    onClick={() => setMode('veo')}
-                    className={`${baseTabClasses} ${mode === 'veo' ? activeTabClasses : inactiveTabClasses}`}
-                >
-                    <span className="[writing-mode:vertical-rl] rotate-180">Veo 3 (Video)</span>
-                </button>
-                <button
-                    onClick={() => setMode('imagen')}
-                    className={`${baseTabClasses} -mt-px ${mode === 'imagen' ? activeTabClasses : inactiveTabClasses}`}
-                >
-                    <span className="[writing-mode:vertical-rl] rotate-180">Imagen (Gambar)</span>
-                </button>
-                <button
-                    onClick={() => setMode('tutorial')}
-                    className={`${baseTabClasses} -mt-px ${mode === 'tutorial' ? activeTabClasses : inactiveTabClasses}`}
-                >
-                    <span className="[writing-mode:vertical-rl] rotate-180">Tutorial</span>
-                </button>
-            </div>
+          
+          <footer className="text-center mt-12 text-slate-500 text-sm">
+            <p>Generator Prompt AI Profesional</p>
+            <p className="font-bold text-blue-600">-- LANEXA --</p>
+          </footer>
         </div>
-        
-        <footer className="text-center mt-12 text-slate-500 text-sm">
-          <p>Generator Prompt AI Profesional</p>
-          <p className="font-bold text-blue-600">-- LANEXA --</p>
-        </footer>
       </div>
-    </div>
+    </>
   );
 };
 
